@@ -136,6 +136,7 @@ ENV/
 env.bak/
 venv.bak/
 paligemma-env/
+agent_workspace/
 
 # Spyder project settings
 .spyderproject
@@ -170,3 +171,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
