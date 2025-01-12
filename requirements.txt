@@ -4,3 +4,4 @@ pillow
 requests
 swarms
 fastapi
+accelerate

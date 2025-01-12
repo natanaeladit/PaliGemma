@@ -7,8 +7,8 @@ app = FastAPI()
 model = PaliGemma()
 
 # Define the text prompt and image URL
-text_prompt = "A beautiful animal."
-image_url = "https://www.thesprucepets.com/thmb/wDwU14vPAAGa6sl9V0hdIrJggpI=/3600x0/filters:no_upscale():strip_icc()/cute-dog-breeds-we-can-t-get-enough-of-4589340-hero-04aba92c6fbb4651b7fa1f54823a1a6d.jpg"
+text_prompt = "<image>caption en"
+image_url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/cats.png"
 
 # Run the PaliGemma model
 output = model.run(text_prompt, image_url)
@@ -21,4 +21,9 @@ async def generate(task: str, image: UploadFile = File(...)):
     with open("input.jpg", "wb") as f:
         f.write(contents)
     output = model.run(task, "input.jpg")
+    return {"output": output}
+
+@app.post("/generate2")
+async def generate(task: str, image_url: str):
+    output = model.run(task, image_url)
     return {"output": output}
