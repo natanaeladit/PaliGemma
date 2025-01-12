@@ -1,9 +1,9 @@
+from transformers import (
+    PaliGemmaProcessor,
+    PaliGemmaForConditionalGeneration,
+)
+from transformers.image_utils import load_image
 import torch
-from transformers import PaliGemmaForConditionalGeneration, AutoProcessor
-from PIL import Image
-import requests
-
-from transformers import BitsAndBytesConfig
 
 class PaliGemma():
     """
@@ -30,8 +30,8 @@ class PaliGemma():
 
     def __init__(
         self,
-        model_id: str = "google/paligemma-3b-mix-224",
-        max_new_tokens: int = 20,
+        model_id: str = "google/paligemma2-3b-pt-224",
+        max_new_tokens: int = 100,
         skip_special_tokens: bool = True,
         *args,
         **kwargs
@@ -41,14 +41,16 @@ class PaliGemma():
         #     bnb_4bit_quant_type="nf4",
         #     bnb_4bit_compute_dtype=torch.bfloat16
         # )
-        self.model = PaliGemmaForConditionalGeneration.from_pretrained(
-            model_id
-            #,quantization_config=bnb_config
-            #,device_map={"":0}
-        )
-        device = torch.device('cpu')
-        self.model = self.model.to(device)#.to("cuda")
-        self.processor = AutoProcessor.from_pretrained(model_id)
+        # self.model = PaliGemmaForConditionalGeneration.from_pretrained(
+        #     model_id
+        #     #,quantization_config=bnb_config
+        #     #,device_map={"":0}
+        # )
+        # device = torch.device('cpu')
+        #self.model = self.model.to(device)#.to("cuda")
+        #self.processor = AutoProcessor.from_pretrained(model_id)
+        self.model = PaliGemmaForConditionalGeneration.from_pretrained(model_id, torch_dtype=torch.bfloat16, device_map="auto").eval()
+        self.processor = PaliGemmaProcessor.from_pretrained(model_id)
         self.max_new_tokens = max_new_tokens
         self.skip_special_tokens = skip_special_tokens
 
@@ -66,12 +68,20 @@ class PaliGemma():
             str: The generated output text.
 
         """
-        raw_image = Image.open(requests.get(image_url, stream=True).raw).convert("RGB")
+        raw_image = load_image(image_url)
         device = torch.device('cpu')
-        inputs = self.processor(task, raw_image, return_tensors="pt").to(device)#.to("cuda")
-        output = self.model.generate(
-            **inputs, max_new_tokens=self.max_new_tokens, **kwargs
-        )
-        return self.processor.decode(
-            output[0], skip_special_tokens=self.skip_special_tokens
-        )[len(task) :]
+        inputs = self.processor(text=task, images=raw_image, return_tensors="pt").to(torch.bfloat16).to(self.model.device)#.to(device)#.to("cuda")
+        input_len = inputs["input_ids"].shape[-1]
+
+        with torch.inference_mode():
+            generation = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens, do_sample=False)
+            generation = generation[0][input_len:]
+            decoded = self.processor.decode(generation, skip_special_tokens=True)
+            return decoded
+
+        # output = self.model.generate(
+        #     **inputs, max_new_tokens=self.max_new_tokens, **kwargs
+        # )
+        # return self.processor.decode(
+        #     output[0], skip_special_tokens=self.skip_special_tokens
+        # )[len(task) :]
