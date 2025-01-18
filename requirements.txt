@@ -7,3 +7,5 @@ fastapi
 accelerate
 python-multipart
 uvicorn
+peft
+opencv-python
